@@ -19,6 +19,8 @@ typedef unsigned int uint;
 typedef float float32;
 typedef double float64;
 
+typedef uint8 byte;
+
 static SDL_Color cTankPalette[1] = {
     { 0, 255, 0, 255 },
 };
@@ -38,7 +40,29 @@ static uint8 cTankImageData[13 * 8] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
-static uint8 cInvader1ImageData[13 * 8] = {
+static uint8 cInvader1Frame1ImageData[12 * 8] = {
+    0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0,
+    0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0,
+    0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0,
+};
+
+static uint8 cInvader1Frame2ImageData[12 * 8] = {
+    0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0,
+    0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0,
+    1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+};
+
+static uint8 cInvader2Frame1ImageData[13 * 8] = {
     0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0,
     0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0,
     0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
@@ -47,6 +71,49 @@ static uint8 cInvader1ImageData[13 * 8] = {
     0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
     0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0,
     0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0,
+};
+
+static uint8 cInvader2Frame2ImageData[13 * 8] = {
+    0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+    0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0,
+    0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0,
+    0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+    0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+};
+
+static uint8 cInvader3Frame1ImageData[8 * 8] = {
+    0, 0, 0, 1, 1, 0, 0, 0,
+    0, 0, 1, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 0, 1, 1, 0, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    0, 1, 0, 1, 1, 0, 1, 0,
+    1, 0, 0, 0, 0, 0, 0, 1,
+    0, 1, 0, 0, 0, 0, 1, 0,
+};
+
+static uint8 cInvader3Frame2ImageData[8 * 8] = {
+    0, 0, 0, 1, 1, 0, 0, 0,
+    0, 0, 1, 1, 1, 1, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 0,
+    1, 1, 0, 1, 1, 0, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 1, 0, 0, 1, 0, 0,
+    0, 1, 0, 1, 1, 0, 1, 0,
+    1, 0, 1, 0, 0, 1, 0, 1,
+};
+
+static uint8 cUfoImageData[16 * 7] = {
+    0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+    0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,
+    0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0,
+    0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 };
 
 static const int cScreenWidth = 240;
@@ -105,9 +172,6 @@ typedef struct tank_state {
     BulletState bullets[MAX_TANK_BULLETS];
 } TankState;
 
-
-#define INVADER_MOVE_QUEUE_SIZE 3
-
 typedef enum invader_move {
     InvaderMove_Left,
     InvaderMove_Right,
@@ -118,17 +182,20 @@ typedef struct invader_state {
     float32 x, y;
     float32 w, h;
     bool active;
-    float moveDelay;
-    InvaderMove moveQueue[INVADER_MOVE_QUEUE_SIZE];
-    int moveHead, moveTail;
+    float32 moveDelay;
+    InvaderMove queuedMove;
     BulletState bullet;
 } InvaderState;
+
+#define INVADER_MOVE_QUEUE_SIZE 3
 
 typedef struct play_state {
     TankState tank;
     ShieldState shields[SHIELD_COUNT];
     InvaderState invaders[MAX_INVADERS];
-    int invaderDirection;
+    InvaderMove moveQueue[INVADER_MOVE_QUEUE_SIZE];
+    int moveIndex;
+    float32 moveDelay;
 } PlayState;
 
 typedef struct input_state {
@@ -166,14 +233,13 @@ float32 lerp(float32 a, float32 b, float32 t);
 
 SDL_Texture* create_palette_image_texture(SDL_Renderer* renderer, uint8* data, int width, int height, SDL_Color* palette);
 
-SDL_Texture* g_tankTexture;
-SDL_Texture* g_invader1Texture;
+SDL_Texture* g_textures[8];
 
 int main(int argc, char* argv[]) {
     g_config.tankSpeed = 50.f;
     g_config.invaderMinMoveDelay = 0.1f;
     g_config.invaderMaxMoveDelay = 1.f;
-    g_config.invaderMoveAmount = 1;
+    g_config.invaderMoveAmount = 2;
 
     srand(time(NULL));
 
@@ -184,8 +250,14 @@ int main(int argc, char* argv[]) {
 
     SDL_RenderSetLogicalSize(renderer, cScreenWidth, cScreenHeight);
 
-    g_tankTexture = create_palette_image_texture(renderer, cTankImageData, 13, 8, cTankPalette);
-    g_invader1Texture = create_palette_image_texture(renderer, cInvader1ImageData, 13, 8, cInvaderPalette);
+    g_textures[0] = create_palette_image_texture(renderer, cTankImageData, 13, 8, cTankPalette);
+    g_textures[1] = create_palette_image_texture(renderer, cInvader1Frame1ImageData, 12, 8, cInvaderPalette);
+    g_textures[2] = create_palette_image_texture(renderer, cInvader1Frame2ImageData, 12, 8, cInvaderPalette);
+    g_textures[3] = create_palette_image_texture(renderer, cInvader2Frame1ImageData, 13, 8, cInvaderPalette);
+    g_textures[4] = create_palette_image_texture(renderer, cInvader2Frame2ImageData, 13, 8, cInvaderPalette);
+    g_textures[5] = create_palette_image_texture(renderer, cInvader3Frame1ImageData, 8, 8, cInvaderPalette);
+    g_textures[6] = create_palette_image_texture(renderer, cInvader3Frame2ImageData, 8, 8, cInvaderPalette);
+    g_textures[7] = create_palette_image_texture(renderer, cUfoImageData, 16, 7, cInvaderPalette);
 
     GameState gameState;
 
@@ -267,9 +339,19 @@ void game_init(GameState* self) {
     input_reset(&self->input);
 }
 
+const char* get_move_string(InvaderMove move) {
+    switch (move) {
+        default:
+        case InvaderMove_Left: return "L";
+        case InvaderMove_Right: return "R";
+        case InvaderMove_Down: return "D";
+    }
+}
+
 void game_update(GameState* self, float32 dt) {
     InputState* input = &self->input;
 
+    // Tank
     TankState* tank = &self->play.tank;
     {
         float32 speed = g_config.tankSpeed * dt;
@@ -290,14 +372,13 @@ void game_update(GameState* self, float32 dt) {
         }
     }
 
-
+    // Invaders
     {
-        if (input_get_down(input, SDL_SCANCODE_D)) {
-            self->play.invaders[rand() % MAX_INVADERS].active = false;
-        }
+        self->play.moveDelay -= dt;
 
-        Bounds invaderBounds = { 999999, -999999, 999999, -999999 };
+        // figure out boundaries of entire swarm
         int aliveInvaders = 0;
+        Bounds invaderBounds = { 999999, -999999, 999999, -999999 };
         for (int i = 0; i < MAX_INVADERS; ++i) {
             InvaderState* invader = &self->play.invaders[i];
             if (invader->active) {
@@ -306,29 +387,71 @@ void game_update(GameState* self, float32 dt) {
             }
         }
 
-        bool doDown = false;
-        if (self->play.invaderDirection > 0) {
-            if (invaderBounds.right >= INVADER_BOUNDARY_RIGHT) {
-                doDown = true;
-                self->play.invaderDirection = -1;
+        // time for the next move
+        if (self->play.moveDelay <= 0.f) {
+            // using previous two moves figure out which move is appropriate
+            InvaderMove prevMove1 = self->play.moveQueue[(self->play.moveIndex - 0) % INVADER_MOVE_QUEUE_SIZE];
+            InvaderMove prevMove2 = self->play.moveQueue[(self->play.moveIndex - 1) % INVADER_MOVE_QUEUE_SIZE];
+
+            InvaderMove move = prevMove1;
+
+            switch (prevMove1) {
+                case InvaderMove_Right:
+                    if (invaderBounds.right >= INVADER_BOUNDARY_RIGHT) {
+                        move = InvaderMove_Down;
+                    }
+                    break;
+
+                case InvaderMove_Left:
+                    if (invaderBounds.left <= INVADER_BOUNDARY_LEFT) {
+                        move = InvaderMove_Down;
+                    }
+                    break;
+
+                case InvaderMove_Down:
+                    if (prevMove2 == InvaderMove_Left) {
+                        move = InvaderMove_Right;
+                    }
+                    else {
+                        move = InvaderMove_Left;
+                    }
+                    break;
             }
-        }
-        else if (self->play.invaderDirection < 0) {
-            if (invaderBounds.left <= INVADER_BOUNDARY_LEFT) {
-                doDown = true;
-                self->play.invaderDirection = 1;
+
+            // update move queue and move delay
+            self->play.moveIndex++;
+            int index = self->play.moveIndex % INVADER_MOVE_QUEUE_SIZE;
+            self->play.moveQueue[index] = move;
+            self->play.moveDelay += lerp(g_config.invaderMinMoveDelay, g_config.invaderMaxMoveDelay, (float32)aliveInvaders / MAX_INVADERS);
+
+            // tell all invaders what their next move is and how long to wait until doing it
+            for (int i = 0; i < MAX_INVADERS; ++i) {
+                InvaderState* invader = &self->play.invaders[i];
+                if (invader->active) {
+                    invader->queuedMove = move;
+                    int row = INVADER_ROWS - (i / INVADER_COLS);
+                    invader->moveDelay = 0.01f + row * 0.05f;
+                    // clamp the delay to delay of the next swarm move
+                    if (invader->moveDelay > self->play.moveDelay) {
+                        invader->moveDelay = self->play.moveDelay;
+                    }
+                }
             }
         }
 
-        float32 speed = self->play.invaderDirection * g_config.invaderMoveAmount;
-
+        // once an invader's delay is done do the stored move
         for (int i = 0; i < MAX_INVADERS; ++i) {
             InvaderState* invader = &self->play.invaders[i];
             if (invader->active) {
-                invader->moveDelay -= dt;
-                if (invader->moveDelay <= 0) {
-                    invader->x += speed;
-                    invader->moveDelay = lerp(g_config.invaderMaxMoveDelay, g_config.invaderMinMoveDelay, aliveInvaders / MAX_INVADERS);
+                if (invader->moveDelay > 0.f) {
+                    invader->moveDelay -= dt;
+                    if (invader->moveDelay <= 0.f) {
+                        switch (invader->queuedMove) {
+                            case InvaderMove_Down: invader->y += g_config.invaderMoveAmount; break;
+                            case InvaderMove_Left: invader->x -= g_config.invaderMoveAmount; break;
+                            case InvaderMove_Right: invader->x += g_config.invaderMoveAmount; break;
+                        }
+                    }
                 }
             }
         }
@@ -344,7 +467,7 @@ void game_render(GameState* self, SDL_Renderer* renderer) {
             tank->x - hw, tank->y - hh,
             tank->w, tank->h,
         };
-        SDL_RenderCopy(renderer, g_tankTexture, NULL, &r);
+        SDL_RenderCopy(renderer, g_textures[0], NULL, &r);
     }
 
     for (int i = 0; i < MAX_INVADERS; ++i) {
@@ -356,7 +479,7 @@ void game_render(GameState* self, SDL_Renderer* renderer) {
                 invader->x - hw, invader->y - hh,
                 invader->w, invader->h,
             };
-            SDL_RenderCopy(renderer, g_invader1Texture, NULL, &r);
+            SDL_RenderCopy(renderer, g_textures[1], NULL, &r);
         }
     }
 }
@@ -366,7 +489,7 @@ void play_reset(PlayState* self) {
 
     const int spacing = 4;
     const int offsetX = 10;
-    const int offsetY = 10;
+    const int offsetY = 20;
     for (int i = 0; i < MAX_INVADERS; ++i) {
         int row = i / INVADER_COLS;
         int col = i % INVADER_COLS;
@@ -374,8 +497,11 @@ void play_reset(PlayState* self) {
         int y = row * (spacing + 8) + offsetY;
         invader_reset(&self->invaders[i], x, y);
     }
-
-    self->invaderDirection = 1;
+    self->moveDelay = g_config.invaderMaxMoveDelay;
+    self->moveIndex = 0;
+    for (int i = 0; i < INVADER_MOVE_QUEUE_SIZE; ++i) {
+        self->moveQueue[i] = InvaderMove_Right;
+    }
 }
 
 void tank_reset(TankState* self) {
