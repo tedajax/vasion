@@ -117,6 +117,15 @@ static uint8 cUfoImageData[16 * 7] = {
     0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
 };
 
+static uint8 cTankBulletImageData[3 * 6] = {
+    2, 2, 2,
+    2, 2, 2,
+    2, 2, 2,
+    2, 2, 2,
+    2, 2, 2,
+    2, 2, 2,
+};
+
 static const int cScreenWidth = 240;
 static const int cScreenHeight = 160;
 
@@ -236,7 +245,7 @@ float32 lerp(float32 a, float32 b, float32 t);
 
 SDL_Texture* create_palette_image_texture(SDL_Renderer* renderer, uint8* data, int width, int height, SDL_Color* palette);
 
-SDL_Texture* g_textures[9];
+SDL_Texture* g_textures[20];
 
 int main(int argc, char* argv[]) {
     g_config.tankSpeed = 50.f;
@@ -253,14 +262,18 @@ int main(int argc, char* argv[]) {
 
     SDL_RenderSetLogicalSize(renderer, cScreenWidth, cScreenHeight);
 
-    g_textures[0] = create_palette_image_texture(renderer, cTankImageData, 13, 8, cColorPalette);
-    g_textures[1] = create_palette_image_texture(renderer, cInvader1Frame1ImageData, 12, 8, cColorPalette);
-    g_textures[2] = create_palette_image_texture(renderer, cInvader1Frame2ImageData, 12, 8, cColorPalette);
-    g_textures[3] = create_palette_image_texture(renderer, cInvader2Frame1ImageData, 13, 8, cColorPalette);
-    g_textures[4] = create_palette_image_texture(renderer, cInvader2Frame2ImageData, 13, 8, cColorPalette);
-    g_textures[5] = create_palette_image_texture(renderer, cInvader3Frame1ImageData, 8, 8, cColorPalette);
-    g_textures[6] = create_palette_image_texture(renderer, cInvader3Frame2ImageData, 8, 8, cColorPalette);
-    g_textures[7] = create_palette_image_texture(renderer, cUfoImageData, 16, 7, cColorPalette);
+    {
+        int texidx = 0;
+        g_textures[texidx++] = create_palette_image_texture(renderer, cTankImageData, 13, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cInvader1Frame1ImageData, 12, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cInvader1Frame2ImageData, 12, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cInvader2Frame1ImageData, 13, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cInvader2Frame2ImageData, 13, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cInvader3Frame1ImageData, 8, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cInvader3Frame2ImageData, 8, 8, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cUfoImageData, 16, 7, cColorPalette);
+        g_textures[texidx++] = create_palette_image_texture(renderer, cTankBulletImageData, 3, 6, cColorPalette);
+    }
 
     GameState gameState;
 
@@ -330,11 +343,11 @@ int main(int argc, char* argv[]) {
         // render the render texture to the window
         {
             SDL_SetRenderTarget(renderer, NULL);
-            
+
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             //SDL_RenderClear(renderer);
             SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
-            
+
             SDL_RenderPresent(renderer);
         }
     }
@@ -362,7 +375,7 @@ const char* get_move_string(InvaderMove move) {
 void game_update(GameState* self, float32 dt) {
     InputState* input = &self->input;
 
-    // Tank
+    // Tank Movement
     TankState* tank = &self->play.tank;
     {
         float32 speed = g_config.tankSpeed * dt;
@@ -380,6 +393,26 @@ void game_update(GameState* self, float32 dt) {
         float rightBound = cScreenWidth - tank->w / 2;
         if (tank->x > rightBound) {
             tank->x = rightBound;
+        }
+    }
+
+    // Tank Shooting
+    {
+        bool requestShot = input_get_down(input, KEY_FIRE);
+        if (requestShot) {
+            BulletState* bullet = NULL;
+            for (int i = 0; i < MAX_TANK_BULLETS; ++i) {
+                if (!tank->bullets[i].active) {
+                    bullet = &tank->bullets[i];
+                    break;
+                }
+            }
+
+            if (bullet) {
+                bullet->active = true;
+                bullet->x = tank->x;
+                bullet->y = tank->y;
+            }
         }
     }
 
@@ -470,6 +503,39 @@ void game_update(GameState* self, float32 dt) {
             }
         }
     }
+
+    // Move bullets
+    {
+        for (int i = 0; i < MAX_TANK_BULLETS; ++i) {
+            BulletState* bullet = &tank->bullets[i];
+            if (bullet->active) {
+                bullet->y -= 200.f * dt;
+                if (bullet->y < 0) {
+                    bullet->active = false;
+                }
+
+                float32 bltLeft = bullet->x - bullet->w / 2;
+                float32 bltRight = bullet->x + bullet->w / 2;
+                float32 bltTop = bullet->y - bullet->h / 2;
+                float32 bltBottom = bullet->y + bullet->h / 2;
+                for (int j = 0; j < MAX_INVADERS; ++j) {
+                    InvaderState* invader = &self->play.invaders[j];
+                    if (invader->active) {
+                        float32 invLeft = invader->x - invader->w / 2;
+                        float32 invRight = invader->x + invader->w / 2;
+                        float32 invTop = invader->y - invader->h / 2;
+                        float32 invBottom = invader->y + invader->h / 2;
+
+                        if (bltTop <= invBottom && bltBottom >= invTop &&
+                            bltLeft <= invRight && bltRight >= invLeft) {
+                            bullet->active = false;
+                            invader->active = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void game_render(GameState* self, SDL_Renderer* renderer) {
@@ -497,6 +563,19 @@ void game_render(GameState* self, SDL_Renderer* renderer) {
             int baseIndex = cInvaderTextureTable[invader->invaderType];
             int textureIndex = baseIndex + (invader->frame & 0x1);
             SDL_RenderCopy(renderer, g_textures[textureIndex], NULL, &r);
+        }
+    }
+
+    for (int i = 0; i < MAX_TANK_BULLETS; ++i) {
+        BulletState* bullet = &tank->bullets[i];
+        if (bullet->active) {
+            int hw = bullet->w / 2;
+            int hh = bullet->h / 2;
+            SDL_Rect r = {
+                bullet->x - hw, bullet->y - hh,
+                bullet->w, bullet->h,
+            };
+            SDL_RenderCopy(renderer, g_textures[8], NULL, &r);
         }
     }
 }
@@ -542,8 +621,8 @@ void tank_reset(TankState* self) {
 void bullet_reset(BulletState* self, BulletSource bulletSource) {
     self->x = 0;
     self->y = 0;
-    self->w = 1;
-    self->h = 3;
+    self->w = 2;
+    self->h = 6;
     self->active = false;
     self->source = bulletSource;
 }
