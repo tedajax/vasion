@@ -618,30 +618,11 @@ void game_update(GameState* self, float32 dt) {
             for (int i = 0; i < MAX_INVADERS; ++i) {
                 InvaderState* invader = &self->play.invaders[i];
                 if (invader->active) {
-                    invader->queuedMove = move;
-                    int row = INVADER_ROWS - (i / INVADER_COLS);
-                    invader->moveDelay = 0.0001f + row * lerp_clamp_range(&g_config.invaderRowDelay, alivePerc);
-                    // clamp the delay to delay of the next swarm move
-                    if (invader->moveDelay > self->play.moveDelay) {
-                        invader->moveDelay = self->play.moveDelay;
-                    }
-                }
-            }
-        }
-
-        // once an invader's delay is done do the stored move
-        for (int i = 0; i < MAX_INVADERS; ++i) {
-            InvaderState* invader = &self->play.invaders[i];
-            if (invader->active) {
-                if (invader->moveDelay > 0.f) {
-                    invader->moveDelay -= dt;
-                    if (invader->moveDelay <= 0.f) {
-                        invader->frame++;
-                        switch (invader->queuedMove) {
-                            case InvaderMove_Down: invader->target.position.y += g_config.invaderMoveAmount; break;
-                            case InvaderMove_Left: invader->target.position.x -= g_config.invaderMoveAmount; break;
-                            case InvaderMove_Right: invader->target.position.x += g_config.invaderMoveAmount; break;
-                        }
+                    invader->frame++;
+                    switch (move) {
+                        case InvaderMove_Down: invader->target.position.y += g_config.invaderMoveAmount; break;
+                        case InvaderMove_Left: invader->target.position.x -= g_config.invaderMoveAmount; break;
+                        case InvaderMove_Right: invader->target.position.x += g_config.invaderMoveAmount; break;
                     }
                 }
             }
