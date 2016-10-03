@@ -51,13 +51,13 @@ typedef uint8 byte;
 static const int cScreenWidth = 240;
 static const int cScreenHeight = 160;
 
-#define SHIELD_CHUNK_COUNT 25
-#define MAX_SHIELDS 4
 #define INVADER_ROWS 5
 #define INVADER_COLS 11
 #define INVADER_BOUNDARY_LEFT 10
 #define INVADER_BOUNDARY_RIGHT (cScreenWidth - INVADER_BOUNDARY_LEFT)
 #define INVADER_MOVE_QUEUE_SIZE 3
+
+#define MAX_SHIELDS 4
 #define MAX_INVADERS (INVADER_ROWS * INVADER_COLS)
 #define MAX_TANK_BULLETS 1
 #define MAX_INVADER_BULLETS 2
@@ -72,6 +72,9 @@ static const int cScreenHeight = 160;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Structures
+
+//-----------------------------------
+// Math
 typedef struct range {
     float32 min;
     float32 max;
@@ -81,12 +84,38 @@ typedef struct point {
     float32 x, y;
 } Point;
 
+typedef struct ipoint {
+    int32 x, y;
+} IPoint;
+
 typedef struct rect {
     Point position;
     float32 width;
     float32 height;
 } Rect;
 
+typedef struct bounds {
+    float32 left, right, top, bottom;
+} Bounds;
+
+typedef struct ibounds {
+    int32 left, right, top, bottom;
+} IBounds;
+
+typedef struct px_collision_data {
+    int32 pixelA, pixelB;
+} PxCollisionData;
+
+typedef struct paletteTexture {
+    SDL_Texture* texture;
+    uint8* data;
+    int width;
+    int height;
+} PaletteTexture;
+//-----------------------------------
+
+//-----------------------------------
+// Configuration
 typedef struct config {
     float32 tankSpeed;
     float32 tankBulletSpeed;
@@ -100,7 +129,10 @@ typedef struct config {
 } Config;
 
 Config g_config;
+//-----------------------------------
 
+//-----------------------------------
+// Bullets
 typedef struct bullet_state {
     Rect target;
     bool active;
@@ -110,12 +142,18 @@ typedef struct bullet_state {
     int frameCount;
     int* ownerHandle;
 } BulletState;
+//-----------------------------------
 
+//-----------------------------------
+// Shields
 typedef struct shield_state {
     Rect target;
-    bool chunks[SHIELD_CHUNK_COUNT];
+    PaletteTexture texture;
 } ShieldState;
+//-----------------------------------
 
+//-----------------------------------
+// Tank
 typedef enum tank_mode {
     TankMode_Active,
     TankMode_Dead,
@@ -126,7 +164,10 @@ typedef struct tank_state {
     TankMode mode;
     int bullets[MAX_TANK_BULLETS];
 } TankState;
+//-----------------------------------
 
+//-----------------------------------
+// Invaders
 typedef enum invader_move {
     InvaderMove_Left,
     InvaderMove_Right,
@@ -144,8 +185,10 @@ typedef struct invader_state {
     int frame;
     int bullets[MAX_INVADER_BULLETS];
 } InvaderState;
+//-----------------------------------
 
-
+//-----------------------------------
+// Game
 typedef struct play_state {
     TankState tank;
     ShieldState shields[MAX_SHIELDS];
@@ -166,9 +209,12 @@ typedef struct game_state {
     InputState input;
 } GameState;
 
-typedef struct bounds {
-    float32 left, right, top, bottom;
-} Bounds;
+typedef struct game {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    GameState* gameState;
+} Game;
+//-----------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -319,11 +365,25 @@ static uint8 cShieldImageData[18 * 14] = {
     2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2,
     2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2,
 };
+
+static const uint8 cTankTexture = 0;
+static const uint8 cInvader1Frame1Texture = 1;
+static const uint8 cInvader1Frame2Texture = 2;
+static const uint8 cInvader2Frame1Texture = 3;
+static const uint8 cInvader2Frame2Texture = 4;
+static const uint8 cInvader3Frame1Texture = 5;
+static const uint8 cInvader3Frame2Texture = 6;
+static const uint8 cUfoTexture = 7;
+static const uint8 cTankBulletTexture = 8;
+static const uint8 cInvaderBulletFrame1Texture = 9;
+static const uint8 cInvaderBulletFrame2Texture = 10;
+static const uint8 cExplosionTexture = 11;
+static const uint8 cShieldTexture = 12;
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_init(GameState* self);
-void game_update(GameState* self, float32 dt);
-void game_render(GameState* self, SDL_Renderer* renderer);
+void game_init(Game* self);
+void game_update(Game* self, float32 dt);
+void game_render(Game* self);
 
 void play_reset(PlayState* self);
 void tank_reset(TankState* self);
@@ -331,6 +391,7 @@ void bullet_reset(BulletState* self);
 void bullet_remove(BulletState* self);
 void bullet_create(BulletState* self, int x, int y, int bulletType, int* ownerHandle);
 void invader_reset(InvaderState* self, int x, int y, int invaderType);
+void shield_damage(ShieldState* self, Game* game, int32* indices, int32 count);
 
 void input_reset(InputState* self);
 void input_update(InputState* self);
@@ -342,8 +403,11 @@ bool input_get_up(InputState* self, int scancode);
 float32 range_rand(Range* range);
 void bounds_grow(Bounds* self, Point* point);
 Bounds bounds_from_rect(Rect* rect);
+IBounds ibounds_from_rect(Rect* rect);
+void ibounds_extract_union(IBounds* a, IBounds* b, IBounds* dest);
 Rect rect_from_bounds(Bounds* bounds);
 bool rect_intersects(Rect* a, Rect* b);
+bool px_to_px_intersect(Rect* a, Rect* b, PaletteTexture* texA, PaletteTexture* texB, PxCollisionData* data);
 void rect_to_sdl(Rect* rect, SDL_Rect* dest);
 float32 lerp(float32 a, float32 b, float32 t);
 float32 clamp(float32 v, float32 min, float32 max);
@@ -352,9 +416,9 @@ float32 clamp_range(float32 v, Range* range);
 float32 lerp_range(Range* range, float32 t);
 float32 lerp_clamp_range(Range* range, float32 t);
 
-SDL_Texture* create_palette_image_texture(SDL_Renderer* renderer, uint8* data, int width, int height, SDL_Color* palette);
+PaletteTexture create_palette_image_texture(SDL_Renderer* renderer, uint8* data, int width, int height, SDL_Color* palette);
 
-SDL_Texture* g_textures[MAX_TEXTURES] = { NULL };
+PaletteTexture g_textures[MAX_TEXTURES] = { 0 };
 
 void configure(Config* config) {
     config->tankSpeed = 50.f;
@@ -373,10 +437,10 @@ void configure(Config* config) {
     config->invaderDeathTime = 0.5f;
 }
 
-void rebuild_textures(SDL_Renderer* renderer, SDL_Texture** textures, size_t count, SDL_Color* palette) {
+void rebuild_textures(SDL_Renderer* renderer, PaletteTexture* textures, size_t count, SDL_Color* palette) {
     for (int i = 0; i < count; ++i) {
-        if (textures[i] != NULL) {
-            SDL_DestroyTexture(textures[i]);
+        if (textures[i].texture != NULL) {
+            SDL_DestroyTexture(textures[i].texture);
         }
     }
 
@@ -412,7 +476,12 @@ int main(int argc, char* argv[]) {
 
     GameState gameState;
 
-    game_init(&gameState);
+    Game game;
+    game.window = window;
+    game.renderer = renderer;
+    game.gameState = &gameState;
+
+    game_init(&game);
 
     uint64 time_prev_ticks = 0;
     float32 time_dt = 0.f;
@@ -464,7 +533,7 @@ int main(int argc, char* argv[]) {
             time_dt = (float32)diff / 1000000000.f;
         }
 
-        game_update(&gameState, time_dt);
+        game_update(&game, time_dt);
 
         // render to the render texture
         {
@@ -472,7 +541,7 @@ int main(int argc, char* argv[]) {
             SDL_SetRenderDrawColor(renderer, 32, 32, 48, 255);
             SDL_RenderClear(renderer);
 
-            game_render(&gameState, renderer);
+            game_render(&game);
         }
 
         // render the render texture to the window
@@ -493,25 +562,23 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-void game_init(GameState* self) {
-    play_reset(&self->play);
-    input_reset(&self->input);
-}
-
-const char* get_move_string(InvaderMove move) {
-    switch (move) {
-        default:
-        case InvaderMove_Left: return "L";
-        case InvaderMove_Right: return "R";
-        case InvaderMove_Down: return "D";
+void game_init(Game* self) {
+    GameState* state = self->gameState;
+    for (int i = 0; i < MAX_SHIELDS; ++i) {
+        state->play.shields[i].texture.texture = NULL;
+        state->play.shields[i].texture.data = NULL;
     }
+
+    play_reset(&state->play);
+    input_reset(&state->input);
 }
 
-void game_update(GameState* self, float32 dt) {
-    InputState* input = &self->input;
+void game_update(Game* self, float32 dt) {
+    GameState* state = self->gameState;
+    InputState* input = &state->input;
 
     // Tank Movement
-    TankState* tank = &self->play.tank;
+    TankState* tank = &state->play.tank;
     {
         float32 speed = g_config.tankSpeed * dt;
         if (input_get_key(input, KEY_LEFT)) {
@@ -540,9 +607,9 @@ void game_update(GameState* self, float32 dt) {
             for (int i = 0; i < MAX_TANK_BULLETS; ++i) {
                 if (tank->bullets[i] < 0) {
                     for (int j = 0; j < MAX_BULLETS; ++j) {
-                        if (!self->play.bullets[j].active) {
+                        if (!state->play.bullets[j].active) {
                             tank->bullets[i] = j;
-                            bullet = &self->play.bullets[j];
+                            bullet = &state->play.bullets[j];
                         }
                     }
                     handle = i;
@@ -562,13 +629,13 @@ void game_update(GameState* self, float32 dt) {
 
     // Invaders
     {
-        self->play.moveDelay -= dt;
+        state->play.moveDelay -= dt;
 
         // figure out boundaries of entire swarm
         int aliveInvaders = 0;
         Bounds invaderBounds = { 999999, -999999, 999999, -999999 };
         for (int i = 0; i < MAX_INVADERS; ++i) {
-            InvaderState* invader = &self->play.invaders[i];
+            InvaderState* invader = &state->play.invaders[i];
             if (invader->active) {
                 ++aliveInvaders;
                 bounds_grow(&invaderBounds, &invader->target.position);
@@ -576,10 +643,10 @@ void game_update(GameState* self, float32 dt) {
         }
 
         // time for the next move
-        if (self->play.moveDelay <= 0.f) {
+        if (state->play.moveDelay <= 0.f) {
             // using previous two moves figure out which move is appropriate
-            InvaderMove prevMove1 = self->play.moveQueue[(self->play.moveIndex - 0) % INVADER_MOVE_QUEUE_SIZE];
-            InvaderMove prevMove2 = self->play.moveQueue[(self->play.moveIndex - 1) % INVADER_MOVE_QUEUE_SIZE];
+            InvaderMove prevMove1 = state->play.moveQueue[(state->play.moveIndex - 0) % INVADER_MOVE_QUEUE_SIZE];
+            InvaderMove prevMove2 = state->play.moveQueue[(state->play.moveIndex - 1) % INVADER_MOVE_QUEUE_SIZE];
 
             InvaderMove move = prevMove1;
 
@@ -609,14 +676,14 @@ void game_update(GameState* self, float32 dt) {
             float32 alivePerc = (float32)aliveInvaders / MAX_INVADERS;
 
             // update move queue and move delay
-            self->play.moveIndex++;
-            int index = self->play.moveIndex % INVADER_MOVE_QUEUE_SIZE;
-            self->play.moveQueue[index] = move;
-            self->play.moveDelay += lerp(g_config.invaderMoveDelay.min, g_config.invaderMoveDelay.max, alivePerc);
+            state->play.moveIndex++;
+            int index = state->play.moveIndex % INVADER_MOVE_QUEUE_SIZE;
+            state->play.moveQueue[index] = move;
+            state->play.moveDelay += lerp(g_config.invaderMoveDelay.min, g_config.invaderMoveDelay.max, alivePerc);
 
             // tell all invaders what their next move is and how long to wait until doing it
             for (int i = 0; i < MAX_INVADERS; ++i) {
-                InvaderState* invader = &self->play.invaders[i];
+                InvaderState* invader = &state->play.invaders[i];
                 if (invader->active) {
                     invader->frame++;
                     switch (move) {
@@ -632,7 +699,7 @@ void game_update(GameState* self, float32 dt) {
     // Invader bullet firing
     {
         for (int i = 0; i < MAX_INVADERS; ++i) {
-            InvaderState* invader = &self->play.invaders[i];
+            InvaderState* invader = &state->play.invaders[i];
             if (invader->active) {
                 invader->fireDelay -= dt;
                 if (invader->fireDelay <= 0.f) {
@@ -641,9 +708,9 @@ void game_update(GameState* self, float32 dt) {
                     for (int j = 0; j < MAX_INVADER_BULLETS; ++j) {
                         if (invader->bullets[i] < 0) {
                             for (int k = 0; k < MAX_BULLETS; ++k) {
-                                if (!self->play.bullets[k].active) {
+                                if (!state->play.bullets[k].active) {
                                     invader->bullets[i] = k;
-                                    bullet = &self->play.bullets[k];
+                                    bullet = &state->play.bullets[k];
                                 }
                             }
                             handle = j;
@@ -669,10 +736,10 @@ void game_update(GameState* self, float32 dt) {
         }
     }
 
-    // Move bullets
+    // Bullet updates
     {
         for (int i = 0; i < MAX_BULLETS; ++i) {
-            BulletState* bullet = &self->play.bullets[i];
+            BulletState* bullet = &state->play.bullets[i];
             if (bullet->active) {
                 bullet->frame++;
                 float32 speed = (bullet->direction > 0) ? g_config.invaderBulletSpeed : g_config.tankBulletSpeed;
@@ -683,7 +750,7 @@ void game_update(GameState* self, float32 dt) {
 
                 if (bullet->direction < 0) {
                     for (int j = 0; j < MAX_INVADERS; ++j) {
-                        InvaderState* invader = &self->play.invaders[j];
+                        InvaderState* invader = &state->play.invaders[j];
                         if (invader->active) {
                             if (rect_intersects(&bullet->target, &invader->target)) {
                                 bullet_remove(bullet);
@@ -701,48 +768,73 @@ void game_update(GameState* self, float32 dt) {
             }
         }
     }
+
+    // Shield stuff
+    {
+        for (int i = 0; i < MAX_SHIELDS; ++i) {
+            ShieldState* shield = &state->play.shields[i];
+            for (int j = 0; j < MAX_BULLETS; ++j) {
+                BulletState* bullet = &state->play.bullets[j];
+                if (!bullet->active) continue;
+
+                int texIdx = bullet->baseTexture + ((bullet->frame / 30) % bullet->frameCount);
+                PxCollisionData collData;
+                if (px_to_px_intersect(&shield->target,
+                    &bullet->target,
+                    &g_textures[cShieldTexture],
+                    &g_textures[texIdx],
+                    &collData)) {
+                    shield_damage(shield, self, &collData.pixelA, 1);
+                    bullet_remove(bullet);
+                }
+            }
+        }
+    }
 }
 
-void game_render(GameState* self, SDL_Renderer* renderer) {
-    TankState* tank = &self->play.tank;
+void game_render(Game* self) {
+    GameState* state = self->gameState;
+    SDL_Renderer* renderer = self->renderer;
+
+    TankState* tank = &state->play.tank;
     {
         SDL_Rect r;
         rect_to_sdl(&tank->target, &r);
-        SDL_RenderCopy(renderer, g_textures[0], NULL, &r);
+        SDL_RenderCopy(renderer, g_textures[0].texture, NULL, &r);
     }
 
     for (int i = 0; i < MAX_SHIELDS; ++i) {
-        ShieldState* shield = &self->play.shields[i];
+        ShieldState* shield = &state->play.shields[i];
         SDL_Rect r;
         rect_to_sdl(&shield->target, &r);
-        SDL_RenderCopy(renderer, g_textures[12], NULL, &r);
+        SDL_RenderCopy(renderer, g_textures[12].texture, NULL, &r);
     }
 
     for (int i = 0; i < MAX_INVADERS; ++i) {
-        InvaderState* invader = &self->play.invaders[i];
+        InvaderState* invader = &state->play.invaders[i];
         if (invader->active) {
             int baseIndex = cInvaderTextureTable[invader->invaderType];
             int textureIndex = baseIndex + (invader->frame & 0x1);
             SDL_Rect r;
             rect_to_sdl(&invader->target, &r);
-            SDL_RenderCopy(renderer, g_textures[textureIndex], NULL, &r);
+            SDL_RenderCopy(renderer, g_textures[textureIndex].texture, NULL, &r);
         }
         else {
             if (invader->deathTime > 0.f) {
                 SDL_Rect r;
                 rect_to_sdl(&invader->target, &r);
-                SDL_RenderCopy(renderer, g_textures[11], NULL, &r);
+                SDL_RenderCopy(renderer, g_textures[11].texture, NULL, &r);
             }
         }
     }
 
     for (int i = 0; i < MAX_BULLETS; ++i) {
-        BulletState* bullet = &self->play.bullets[i];
+        BulletState* bullet = &state->play.bullets[i];
         if (bullet->active) {
             int texIdx = bullet->baseTexture + ((bullet->frame / 30) % bullet->frameCount);
             SDL_Rect r;
             rect_to_sdl(&bullet->target, &r);
-            SDL_RenderCopy(renderer, g_textures[texIdx], NULL, &r);
+            SDL_RenderCopy(renderer, g_textures[texIdx].texture, NULL, &r);
         }
     }
 }
@@ -751,11 +843,20 @@ void play_reset(PlayState* self) {
     tank_reset(&self->tank);
 
     for (int i = 0; i < MAX_SHIELDS; ++i) {
-        Rect* target = &self->shields[i].target;
+        ShieldState* shield = &self->shields[i];
+        Rect* target = &shield->target;
         target->position.x = 43 + i * (18 + 33 + ((i - 1) % 2));
         target->position.y = cScreenHeight - 40;
         target->width = 18;
         target->height = 14;
+        if (shield->texture.texture) {
+            SDL_DestroyTexture(shield->texture.texture);
+            shield->texture.texture = NULL;
+        }
+        if (shield->texture.data) {
+            free(shield->texture.data);
+            shield->texture.data = NULL;
+        }
     }
 
     for (int i = 0; i < MAX_BULLETS; ++i) {
@@ -860,6 +961,15 @@ void invader_reset(InvaderState* self, int x, int y, int invaderType) {
     }
 }
 
+void shield_damage(ShieldState* self, Game* game, int32* indices, int32 count) {
+    if (!self->texture.texture) {
+        self->texture = create_palette_image_texture(game->renderer,
+            cShieldImageData,
+            18, 14,
+            cColorPalette);
+    }
+}
+
 void input_reset(InputState* self) {
     for (int i = 0; i < 512; ++i) {
         self->prevKeys[i] = false;
@@ -889,7 +999,7 @@ bool input_get_up(InputState* self, int scancode) {
     return !self->currKeys[scancode] && self->prevKeys[scancode];
 }
 
-SDL_Texture* create_palette_image_texture(SDL_Renderer* renderer, uint8* data, int width, int height, SDL_Color* palette) {
+PaletteTexture create_palette_image_texture(SDL_Renderer* renderer, uint8* data, int width, int height, SDL_Color* palette) {
     SDL_Surface* surface = SDL_CreateRGBSurface(0, width, height, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 
     const int size = width * height;
@@ -915,7 +1025,11 @@ SDL_Texture* create_palette_image_texture(SDL_Renderer* renderer, uint8* data, i
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
 
-    return texture;
+    PaletteTexture result = {
+        texture, data, width, height,
+    };
+
+    return result;
 }
 
 float32 range_rand(Range* range) {
@@ -947,6 +1061,31 @@ Bounds bounds_from_rect(Rect* rect) {
     return result;
 }
 
+IBounds ibounds_from_rect(Rect* rect) {
+    IBounds result = {
+        (int32)(rect->position.x - rect->width / 2),
+        (int32)(rect->position.x + rect->width / 2),
+        (int32)(rect->position.y - rect->height / 2),
+        (int32)(rect->position.y + rect->height / 2),
+    };
+    return result;
+}
+
+void ibounds_extract_union(IBounds* a, IBounds* b, IBounds* dest) {
+    dest->left = max(a->left, b->left);
+    dest->right = min(a->right, b->right);
+    dest->top = max(a->top, b->top);
+    dest->bottom = min(a->bottom, b->bottom);
+    if (dest->left > dest->right) {
+        dest->left = 0;
+        dest->right = 0;
+    }
+    if (dest->top > dest->bottom) {
+        dest->top = 0;
+        dest->bottom = 0;
+    }
+}
+
 Rect rect_from_bounds(Bounds* bounds) {
     Rect result = {
         {
@@ -965,6 +1104,51 @@ bool rect_intersects(Rect* a, Rect* b) {
     bb = bounds_from_rect(b);
     return ab.top <= bb.bottom && ab.bottom >= bb.top &&
         ab.left <= bb.right && ab.right >= bb.left;
+}
+
+bool px_to_px_intersect(Rect* a, Rect* b, PaletteTexture* texA, PaletteTexture* texB, PxCollisionData* data) {
+    if (data) {
+        data->pixelA = 0;
+        data->pixelB = 0;
+    }
+
+    // early out if we're not intersecting rectangles at all
+    if (!rect_intersects(a, b)) {
+        return false;
+    }
+
+    IBounds ai = ibounds_from_rect(a);
+    IBounds bi = ibounds_from_rect(b);
+
+    IBounds areaA, areaB;
+
+    ibounds_extract_union(&ai, &bi, &areaA);
+    ibounds_extract_union(&bi, &ai, &areaB);
+
+    IPoint topLeftA = { areaA.left, areaA.top };
+    IPoint topLeftB = { areaB.left, areaB.top };
+
+    for (int32 row = ai.top; row <= ai.bottom; ++row) {
+        for (int32 col = ai.left; col <= ai.right; ++col) {
+            int32 ar = row - topLeftA.y;
+            int32 ac = col - topLeftA.x;
+            int32 br = row - topLeftB.y;
+            int32 bc = col - topLeftB.x;
+
+            int32 indexA = ar * texA->width + ac;
+            int32 indexB = br * texB->width + bc;
+
+            if (texA->data[indexA] && texB->data[indexB]) {
+                if (data) {
+                    data->pixelA = indexA;
+                    data->pixelB = indexB;
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 void rect_to_sdl(Rect* rect, SDL_Rect* dest) {
